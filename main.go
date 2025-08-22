@@ -78,6 +78,41 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	case "list":
+		for _, expense := range expenses {
+			for _, item := range expense {
+				fmt.Print(item, "\t")
+			}
+			fmt.Println()
+		}
+	case "update":
+		for i, expense := range expenses {
+			id, err := strconv.Atoi(expense[0])
+			if err != nil {
+				panic(err)
+			}
+			if exp.id == id {
+				if exp.description != "" {
+					expenses[i][1] = exp.description
+				}
+				if exp.amount != 0 {
+					expenses[i][2] = strconv.Itoa(exp.amount)
+				}
+			}
+		}
+		err = file.Truncate(0)
+		if err != nil {
+			panic(err)
+		}
+		_, err = file.Seek(0, 0)
+		if err != nil {
+			panic(err)
+		}
+		writer := csv.NewWriter(file)
+		err = writer.WriteAll(expenses)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
