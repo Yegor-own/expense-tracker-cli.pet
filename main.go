@@ -12,10 +12,12 @@ import (
 func main() {
 	var exp expense
 
+	var month int
 	set := flag.NewFlagSet("", flag.ExitOnError)
 	set.StringVar(&exp.description, "desc", "", "description of expense")
 	set.IntVar(&exp.amount, "amount", 0, "amount of expense")
 	set.IntVar(&exp.id, "id", 0, "id of expense")
+	set.IntVar(&month, "month", 0, "total expenses for month")
 
 	err := set.Parse(os.Args[2:])
 	if err != nil {
@@ -43,76 +45,15 @@ func main() {
 	comand := os.Args[1]
 	switch comand {
 	case "add":
-		exp.date = time.Now()
-		if len(expenses) > 0 {
-			exp.id, err = strconv.Atoi(expenses[len(expenses)-1][0])
-			if err != nil {
-				panic(err)
-			}
-		}
-		exp.id++
-		_, err = file.WriteString(fmt.Sprintf("%d,%s,%d,%s\n", exp.id, exp.description, exp.amount, exp.date.String()))
-		if err != nil {
-			panic(err)
-		}
+		exp.add(expenses, file)
 	case "delete":
-		for i, expense := range expenses {
-			id, err := strconv.Atoi(expense[0])
-			if err != nil {
-				panic(err)
-			}
-			if exp.id == id {
-				expenses = expenses[:i+copy(expenses[i:], expenses[i+1:])]
-			}
-		}
-		err = file.Truncate(0)
-		if err != nil {
-			panic(err)
-		}
-		_, err = file.Seek(0, 0)
-		if err != nil {
-			panic(err)
-		}
-		writer := csv.NewWriter(file)
-		err = writer.WriteAll(expenses)
-		if err != nil {
-			panic(err)
-		}
+		exp.delete(expenses, file)
 	case "list":
-		for _, expense := range expenses {
-			for _, item := range expense {
-				fmt.Print(item, "\t")
-			}
-			fmt.Println()
-		}
+		exp.list(expenses)
 	case "update":
-		for i, expense := range expenses {
-			id, err := strconv.Atoi(expense[0])
-			if err != nil {
-				panic(err)
-			}
-			if exp.id == id {
-				if exp.description != "" {
-					expenses[i][1] = exp.description
-				}
-				if exp.amount != 0 {
-					expenses[i][2] = strconv.Itoa(exp.amount)
-				}
-			}
-		}
-		err = file.Truncate(0)
-		if err != nil {
-			panic(err)
-		}
-		_, err = file.Seek(0, 0)
-		if err != nil {
-			panic(err)
-		}
-		writer := csv.NewWriter(file)
-		err = writer.WriteAll(expenses)
-		if err != nil {
-			panic(err)
-		}
+		exp.update(expenses, file)
+	case "summary":
+		exp.summary(expenses, month)
 	}
 }
 
@@ -121,4 +62,117 @@ type expense struct {
 	description string
 	amount      int
 	date        time.Time
+}
+
+func (exp *expense) add(expenses [][]string, file *os.File) {
+	var err error
+	exp.date = time.Now()
+	if len(expenses) > 0 {
+		exp.id, err = strconv.Atoi(expenses[len(expenses)-1][0])
+		if err != nil {
+			panic(err)
+		}
+	}
+	exp.id++
+	_, err = file.WriteString(fmt.Sprintf("%d,%s,%d,%s\n", exp.id, exp.description, exp.amount, exp.date.Format(time.DateTime)))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (exp *expense) delete(expenses [][]string, file *os.File) {
+	var err error
+	for i, expense := range expenses {
+		id, err := strconv.Atoi(expense[0])
+		if err != nil {
+			panic(err)
+		}
+		if exp.id == id {
+			expenses = expenses[:i+copy(expenses[i:], expenses[i+1:])]
+		}
+	}
+	err = file.Truncate(0)
+	if err != nil {
+		panic(err)
+	}
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		panic(err)
+	}
+	writer := csv.NewWriter(file)
+	err = writer.WriteAll(expenses)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (exp *expense) list(expenses [][]string) {
+	for _, expense := range expenses {
+		for _, item := range expense {
+			fmt.Print(item, "\t")
+		}
+		fmt.Println()
+	}
+}
+
+func (exp *expense) update(expenses [][]string, file *os.File) {
+	var err error
+	for i, expense := range expenses {
+		id, err := strconv.Atoi(expense[0])
+		if err != nil {
+			panic(err)
+		}
+		if exp.id == id {
+			if exp.description != "" {
+				expenses[i][1] = exp.description
+			}
+			if exp.amount != 0 {
+				expenses[i][2] = strconv.Itoa(exp.amount)
+			}
+		}
+	}
+	err = file.Truncate(0)
+	if err != nil {
+		panic(err)
+	}
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		panic(err)
+	}
+	writer := csv.NewWriter(file)
+	err = writer.WriteAll(expenses)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (exp *expense) summary(expenses [][]string, month int) {
+	var amount int
+	for _, expense := range expenses {
+		if month == 0 {
+			a, err := strconv.Atoi(expense[2])
+			if err != nil {
+				panic(err)
+			}
+			amount += a
+			continue
+		}
+
+		t, err := time.Parse(time.DateTime, expense[3])
+		if err != nil {
+			panic(err)
+		}
+		if int(t.Month()) == month {
+			a, err := strconv.Atoi(expense[2])
+			if err != nil {
+				panic(err)
+			}
+			amount += a
+		}
+	}
+	if month == 0 {
+		fmt.Println("Total expenses:", amount)
+	} else {
+		fmt.Printf("Total expenses for %s: %d\n", time.Month(month).String(), amount)
+	}
 }
