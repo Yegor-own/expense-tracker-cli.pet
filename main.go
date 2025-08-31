@@ -25,7 +25,13 @@ func main() {
 	}
 
 	//fmt.Println(exp.description, exp.amount, os.Args[1])
-	file, err := os.OpenFile("data.csv", os.O_RDWR, os.ModePerm)
+	var file *os.File
+	_, err = os.Stat("expense.csv")
+	if err != nil {
+		file, err = os.Create("expense.csv")
+	} else {
+		file, err = os.OpenFile("expense.csv", os.O_RDWR, os.ModePerm)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -78,6 +84,7 @@ func (exp *expense) add(expenses [][]string, file *os.File) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("Added expense\nID\tDESC\t\t\tAMOUNT\tDATE\t\n%d\t%s\t\t%d\t%s\n", exp.id, truncate(exp.description, 16), exp.amount, exp.date.Format(time.DateTime))
 }
 
 func (exp *expense) delete(expenses [][]string, file *os.File) {
@@ -175,4 +182,14 @@ func (exp *expense) summary(expenses [][]string, month int) {
 	} else {
 		fmt.Printf("Total expenses for %s: %d\n", time.Month(month).String(), amount)
 	}
+}
+
+func truncate(str string, length int) string {
+	if len(str) < length {
+		return str
+	}
+	if len(str) < 3 {
+		return str
+	}
+	return str[:length-3] + "..."
 }
